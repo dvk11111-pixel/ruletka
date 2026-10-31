@@ -1,0 +1,218 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#102b3f">
+<meta name="description" content="Локальный статистический анализ истории выпадений рулетки">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<title>Roulette Lab — анализ рулетки</title>
+<style>
+:root{color-scheme:light;--navy:#102b3f;--blue:#245a78;--bg:#f1f4f6;--card:#fff;--line:#dce3e8;--muted:#61717e;--amber:#fff0d1;--green:#19764b}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:#17232d;font:15px/1.45 system-ui,-apple-system,"Segoe UI",sans-serif;padding-bottom:env(safe-area-inset-bottom)}
+header{background:var(--navy);color:white;padding:20px max(16px,calc((100% - 1080px)/2));padding-top:calc(18px + env(safe-area-inset-top))}
+header h1{font-size:clamp(23px,5vw,32px);margin:0 0 3px}header p{margin:0;color:#c5d4df;font-size:13px}
+main{max-width:1080px;margin:auto;padding:14px}
+nav{display:flex;gap:7px;overflow:auto;padding:2px 0 12px;position:sticky;top:0;background:var(--bg);z-index:4}
+nav a{white-space:nowrap;text-decoration:none;color:var(--navy);background:white;border:1px solid var(--line);border-radius:30px;padding:8px 12px;font-size:13px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:15px;padding:16px;margin:0 0 13px;box-shadow:0 2px 9px #102b3f08}
+h2{font-size:18px;margin:0 0 12px}h3{font-size:15px;margin:14px 0 8px}
+.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:11px}.field{min-width:0}.field.full{grid-column:1/-1}
+label{display:block;font-size:12px;font-weight:700;color:#50616e;margin-bottom:5px}
+input,select,textarea,button{font:inherit;border-radius:10px;border:1px solid #cbd5dc;padding:11px;background:#fff;color:#17232d;width:100%;min-width:0}
+textarea{min-height:100px;resize:vertical}
+button{background:var(--navy);border-color:var(--navy);color:#fff;font-weight:700;cursor:pointer}
+button.alt{background:white;color:var(--navy);border-color:#cbd5dc}button.danger{background:#fff;color:#a52d35;border-color:#e7c7c9}
+.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}.actions button{flex:1 1 135px}
+.checkgrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+.checkgrid label{display:flex;align-items:center;gap:8px;margin:0;font-size:13px;font-weight:550;color:#263642}
+.checkgrid input{width:18px;height:18px;margin:0;accent-color:var(--blue)}
+.hint,.muted{color:var(--muted);font-size:12px}.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.stat{background:#f3f6f8;border-radius:11px;padding:10px}.stat b{display:block;font-size:22px;color:var(--navy)}
+.notice{background:#fff8e8;border-left:4px solid #d49a35;padding:11px 12px;border-radius:8px;font-size:12px;color:#644c20;margin:12px 0}
+.scroll{overflow:auto;max-height:520px;border:1px solid #e5eaee;border-radius:10px}
+table{border-collapse:collapse;width:100%;font-size:13px;white-space:nowrap}th,td{text-align:left;padding:9px 10px;border-bottom:1px solid #e9edf0}th{background:#f6f8f9;color:#596875;font-size:11px;position:sticky;top:0;z-index:1}
+tr.rare{background:#fff0d1}td small{display:block;color:#71808b}
+.pill{display:inline-block;background:#edf1f4;border-radius:30px;padding:3px 8px;font-size:11px}.pill.rare{background:#ffe0a3;color:#754900}
+.chartbox{width:100%;overflow:hidden}.chartbox svg{width:100%;height:auto;display:block}
+.numgrid{display:grid;grid-template-columns:repeat(6,1fr);gap:5px;margin-top:10px}.ball{border-radius:8px;color:white;text-align:center;padding:7px 2px;font-weight:700;font-size:13px}.ball small{display:block;font-size:10px;font-weight:500}
+.ball.red{background:#c43d48}.ball.black{background:#242a30}.ball.green{background:#18834e}
+.tabs{display:flex;gap:7px;flex-wrap:wrap}.tabs button{width:auto;padding:8px 11px;font-size:12px}.tabs button.active{background:var(--blue)}
+footer{text-align:center;color:#71808b;font-size:11px;padding:12px 20px 28px}
+@media(min-width:720px){.grid{grid-template-columns:repeat(4,minmax(0,1fr))}.checkgrid{grid-template-columns:repeat(4,minmax(0,1fr))}.numgrid{grid-template-columns:repeat(12,1fr)}}
+</style>
+</head>
+<body>
+<header><h1>Roulette Lab</h1><p>Статистика серий, пропусков и совместного отсутствия</p></header>
+<main>
+<nav><a href="#setup">Настройки</a><a href="#history">История</a><a href="#analysis">Анализ</a><a href="#joint">Комбинации</a><a href="#data">Данные</a></nav>
+
+<section class="card" id="setup">
+<h2>Настройки</h2>
+<div class="grid">
+<div class="field"><label for="wheel">Тип рулетки</label><select id="wheel"><option value="37">Европейская — 0–36</option><option value="38">Американская — 0, 00, 1–36</option><option value="36">Без зеро — 1–36</option></select></div>
+<div class="field"><label for="threshold">Порог подсветки (%)</label><input id="threshold" type="number" min="0.000001" max="100" step="0.1" value="2"></div>
+<div class="field"><label for="sort">Сортировка</label><select id="sort"><option value="gap">Давно не выпадали</option><option value="prob">Минимальная вероятность серии</option><option value="name">По названию</option></select></div>
+<div class="field"><label for="jointMax">Комбинации: максимум событий</label><select id="jointMax"><option value="2">Пары</option><option value="3" selected>Пары и тройки</option></select></div>
+</div>
+<h3>Категории для анализа</h3>
+<div class="checkgrid" id="categories">
+<label><input type="checkbox" value="streets" checked> Тройки (улицы)</label>
+<label><input type="checkbox" value="sixlines" checked> Шестёрки</label>
+<label><input type="checkbox" value="dozens" checked> Трети (дюжины)</label>
+<label><input type="checkbox" value="halves" checked> Половины</label>
+<label><input type="checkbox" value="columns" checked> Колонки</label>
+<label><input type="checkbox" value="colors" checked> Чёрное / красное</label>
+<label><input type="checkbox" value="parity" checked> Чётное / нечётное</label>
+<label><input type="checkbox" value="numbers" checked> Номера 1–36</label>
+<label><input type="checkbox" value="zero" checked> Зеро (если есть)</label>
+</div>
+<p class="hint">История и настройки сохраняются автоматически на этом устройстве.</p>
+</section>
+
+<section class="card" id="history">
+<h2>История выпадений</h2>
+<label for="historyInput">От последнего номера к более ранним</label>
+<textarea id="historyInput" placeholder="Например: 17, 0, 32, 5, 14&#10;Американское двойное зеро вводится как 00"></textarea>
+<div class="actions"><button id="loadBtn">Загрузить историю</button><button class="alt" id="undoBtn">Отменить последний спин</button><button class="alt" id="clearBtn">Очистить</button></div>
+<div class="hint" id="historyStatus" aria-live="polite"></div>
+<h3>Добавить новое выпадение</h3>
+<div class="grid">
+<div class="field"><label for="newNumber">Номер</label><input id="newNumber" inputmode="numeric" placeholder="Например, 7"></div>
+<div class="field" style="align-self:end"><button id="addBtn">Добавить и пересчитать</button></div>
+</div>
+<p class="hint">Новый результат становится первым в списке истории. Для 00 в американской рулетке введите именно два нуля.</p>
+</section>
+
+<section class="card" id="analysis">
+<h2>Анализ категорий</h2>
+<div class="stats"><div class="stat"><span class="muted">Спинов</span><b id="spinCount">0</b></div><div class="stat"><span class="muted">Строк анализа</span><b id="rowCount">0</b></div><div class="stat"><span class="muted">Ниже порога</span><b id="rareCount">0</b></div></div>
+<div class="notice">Вероятность серии — вероятность того, что категория не встретится на протяжении такого числа независимых спинов: (1 − p)ⁿ. Это оценка редкости уже случившейся серии, а не прогноз следующего результата и не преимущество в игре.</div>
+<div class="scroll"><table><thead><tr><th>Категория</th><th>Сейчас отсутствует</th><th>Вероятность серии</th><th>Шанс за спин</th><th>Выпадений</th><th>Макс. серия</th><th>Средняя серия</th></tr></thead><tbody id="results"><tr><td colspan="7">Загрузите историю.</td></tr></tbody></table></div>
+<h3>История серий выбранной категории</h3>
+<div class="field"><label for="chartCategory">Категория для графика</label><select id="chartCategory"></select></div>
+<div class="chartbox" id="chart"><p class="hint">Загрузите историю, чтобы построить график.</p></div>
+<h3>Текущая карта номеров</h3><div class="numgrid" id="numberGrid"></div>
+</section>
+
+<section class="card" id="joint">
+<h2>Совместное отсутствие категорий</h2>
+<p class="hint">Пары и тройки событий из выбранных базовых категорий. Для каждой комбинации считается пересечение номеров: например, «красное + чётное + 1-я треть».</p>
+<div class="stats"><div class="stat"><span class="muted">Комбинаций</span><b id="jointCount">0</b></div><div class="stat"><span class="muted">Ниже порога</span><b id="jointRare">0</b></div><div class="stat"><span class="muted">Невозможных</span><b id="impossibleCount">0</b></div></div>
+<div class="scroll"><table><thead><tr><th>Совместное событие</th><th>Чисел в пересечении</th><th>Отсутствует</th><th>Вероятность серии</th><th>Шанс за спин</th></tr></thead><tbody id="jointResults"><tr><td colspan="5">Загрузите историю.</td></tr></tbody></table></div>
+<p class="hint">Комбинации с пустым пересечением исключаются как невозможные. Совместные категории могут быть зависимы друг от друга — расчёт использует точное число карманов в пересечении, а не перемножение вероятностей.</p>
+</section>
+
+<section class="card" id="data">
+<h2>Сохранение и экспорт</h2>
+<div class="actions"><button id="exportBtn">Экспорт CSV для Excel</button><button class="alt" id="backupBtn">Скачать резервную копию</button><button class="alt" id="installBtn" hidden>Установить приложение</button></div>
+<label for="restoreFile" style="margin-top:12px">Восстановить резервную копию JSON</label><input id="restoreFile" type="file" accept=".json,application/json">
+<p class="hint">Данные хранятся локально в браузере телефона. Резервную копию можно перенести на другое устройство. Не очищайте данные браузера, если не сделали копию.</p>
+</section>
+
+<div class="notice">Статистика рулетки не меняет математическое ожидание ставок. Прошлые результаты не влияют на вероятности будущих спинов.</div>
+</main>
+<footer>Roulette Lab · автономное приложение · данные остаются на вашем устройстве</footer>
+<script>
+const $=id=>document.getElementById(id), reds=new Set([1,3,5,7,9,12,14,16,18,19,21,23,25,27,30,32,34,36]);
+const KEY='rouletteLab.v2';let history=[],chartRows=[];
+const wheel=()=>+$('wheel').value,threshold=()=>Math.max(0,+$('threshold').value)/100;
+const disp=n=>n===37?'00':String(n);
+const pct=x=>x===0?'0%':(x*100<.0001? (x*100).toExponential(2)+'%':(x*100).toFixed(x*100<.01?4:2)+'%');
+function valid(n){return Number.isInteger(n)&&((wheel()===36&&n>=1&&n<=36)||(wheel()===37&&n>=0&&n<=36)||(wheel()===38&&n>=0&&n<=37))}
+function parseNum(s){s=String(s).trim().toUpperCase();if(s==='00')return 37;if(!/^\d+$/.test(s))return null;return +s}
+function parseList(s){return s.trim()?s.trim().split(/[\s,;]+/).filter(Boolean).map(t=>{let n=parseNum(t);if(n===null||!valid(n))throw Error('Недопустимый номер: '+t);return n}):[]}
+function selected(k){return $('categories').querySelector(`[value="${k}"]`).checked}
+function groupDefs(){
+ let a=[];const add=(name,nums,type='')=>a.push({name,nums,type});
+ if(selected('streets'))for(let n=1;n<=36;n+=3)add(`Тройка ${n}–${n+2}`,[n,n+1,n+2],'Тройки');
+ if(selected('sixlines'))for(let n=1;n<=31;n+=6)add(`Шестёрка ${n}–${n+5}`,Array.from({length:6},(_,i)=>n+i),'Шестёрки');
+ if(selected('dozens'))for(let i=0;i<3;i++)add(`${i+1}-я треть (${i*12+1}–${i*12+12})`,Array.from({length:12},(_,j)=>i*12+j+1),'Трети');
+ if(selected('halves')){add('Малая половина (1–18)',Array.from({length:18},(_,i)=>i+1),'Половины');add('Большая половина (19–36)',Array.from({length:18},(_,i)=>i+19),'Половины')}
+ if(selected('columns'))for(let c=1;c<=3;c++)add(`Колонка ${c}`,Array.from({length:12},(_,i)=>i*3+c),'Колонки');
+ if(selected('colors')){add('Красное',[...reds],'Цвет');add('Чёрное',Array.from({length:36},(_,i)=>i+1).filter(n=>!reds.has(n)),'Цвет')}
+ if(selected('parity')){add('Чётное',Array.from({length:18},(_,i)=>(i+1)*2),'Чётность');add('Нечётное',Array.from({length:18},(_,i)=>i*2+1),'Чётность')}
+ if(selected('numbers'))for(let i=1;i<=36;i++)add('Номер '+i,[i],'Номера');
+ if(selected('zero')&&wheel()!==36){add('Зеро 0',[0],'Зеро');if(wheel()===38)add('Зеро 00',[37],'Зеро')}
+ return a;
+}
+function statsFor(nums){
+ let set=new Set(nums),completed=[],gap=0,count=0;
+ // History is newest first; scan oldest to newest. Only closed gaps enter historical averages.
+ for(let i=history.length-1;i>=0;i--){if(set.has(history[i])){if(gap>0)completed.push(gap);gap=0;count++}else gap++}
+ let current=history.findIndex(n=>set.has(n));current=current<0?history.length:current;
+ return {current,count,max:completed.length?Math.max(...completed):0,avg:completed.length?completed.reduce((x,y)=>x+y,0)/completed.length:0,series:completed};
+}
+function probRow(g){
+ let s=statsFor(g.nums),p=g.nums.length/wheel();
+ return {...g,...s,p,prob:Math.pow(1-p,s.current)};
+}
+function render(){
+ $('historyInput').value=history.map(disp).join(', ');
+ $('spinCount').textContent=history.length;
+ let rows=groupDefs().map(probRow),t=threshold(),sort=$('sort')?.value||'gap';
+ rows.sort((a,b)=>sort==='prob'?a.prob-b.prob:sort==='name'?a.name.localeCompare(b.name,'ru'):b.current-a.current||a.prob-b.prob);
+ $('rowCount').textContent=rows.length;$('rareCount').textContent=rows.filter(x=>x.current>0&&x.prob<t).length;
+ $('results').innerHTML=rows.map(r=>`<tr class="${r.current>0&&r.prob<t?'rare':''}"><td><b>${r.name}</b><small>${r.type}</small></td><td>${r.current}</td><td><span class="pill ${r.current>0&&r.prob<t?'rare':''}">${pct(r.prob)}</span></td><td>${pct(r.p)}</td><td>${r.count}</td><td>${r.max}</td><td>${r.avg.toFixed(1)}</td></tr>`).join('')||'<tr><td colspan="7">Выберите категории.</td></tr>';
+ chartRows=rows;let sel=$('chartCategory'),old=sel.value;sel.innerHTML=rows.map((r,i)=>`<option value="${i}">${r.name}</option>`).join('');if(rows.length){sel.value=old&&+old<rows.length?old:'0';drawChart(+sel.value)}else $('chart').innerHTML='';
+ drawNumbers();drawJoint();
+ save();
+}
+function drawNumbers(){
+ let ns=Array.from({length:36},(_,i)=>i+1);if(wheel()!==36)ns.unshift(0);if(wheel()===38)ns.push(37);
+ $('numberGrid').innerHTML=ns.map(n=>{let i=history.indexOf(n),g=i<0?history.length:i,cl=(n===0||n===37)?'green':reds.has(n)?'red':'black';return `<div class="ball ${cl}" title="${disp(n)}: ${g} спинов">${disp(n)}<small>${g}</small></div>`}).join('');
+}
+function drawChart(idx){
+ let r=chartRows[idx];if(!r){$('chart').innerHTML='';return}
+ let set=new Set(r.nums),chron=history.slice().reverse(),vals=[],gap=0;
+ for(let n of chron){if(set.has(n))gap=0;else gap++;vals.push(gap)}
+ if(!vals.length){$('chart').innerHTML='<p class="hint">Нет истории для графика.</p>';return}
+ let w=700,h=210,pad=34,max=Math.max(1,...vals),points=vals.map((v,i)=>`${pad+i*(w-2*pad)/Math.max(1,vals.length-1)},${h-pad-v*(h-2*pad)/max}`).join(' ');
+ let ticks=[0,.5,1].map(q=>{let y=h-pad-q*(h-2*pad);return `<line x1="${pad}" y1="${y}" x2="${w-pad}" y2="${y}" stroke="#e3e8ec"/><text x="5" y="${y+4}" font-size="11" fill="#6b7a85">${Math.round(max*q)}</text>`}).join('');
+ $('chart').innerHTML=`<svg viewBox="0 0 ${w} ${h}" role="img" aria-label="График текущей серии отсутствия ${r.name}"><rect width="${w}" height="${h}" fill="white"/>${ticks}<polyline points="${points}" fill="none" stroke="#286486" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/><circle cx="${pad+(vals.length-1)*(w-2*pad)/Math.max(1,vals.length-1)}" cy="${h-pad-vals.at(-1)*(h-2*pad)/max}" r="4" fill="#c17c24"/><text x="${pad}" y="${h-7}" font-size="11" fill="#6b7a85">Старые спины</text><text x="${w-pad}" y="${h-7}" text-anchor="end" font-size="11" fill="#6b7a85">Последний спин →</text></svg><p class="hint">Максимум на графике: ${max} спинов без выпадения. Текущая серия: ${r.current}.</p>`;
+}
+function baseJointGroups(){
+ let a=[];
+ if(selected('dozens'))for(let i=0;i<3;i++)a.push({name:`${i+1}-я треть`,nums:Array.from({length:12},(_,j)=>i*12+j+1)});
+ if(selected('halves'))a.push({name:'Малая половина',nums:Array.from({length:18},(_,i)=>i+1)},{name:'Большая половина',nums:Array.from({length:18},(_,i)=>i+19)});
+ if(selected('columns'))for(let c=1;c<=3;c++)a.push({name:`Колонка ${c}`,nums:Array.from({length:12},(_,i)=>i*3+c)});
+ if(selected('colors'))a.push({name:'Красное',nums:[...reds]},{name:'Чёрное',nums:Array.from({length:36},(_,i)=>i+1).filter(n=>!reds.has(n))});
+ if(selected('parity'))a.push({name:'Чётное',nums:Array.from({length:18},(_,i)=>(i+1)*2)},{name:'Нечётное',nums:Array.from({length:18},(_,i)=>i*2+1)});
+ if(selected('zero')&&wheel()!==36){a.push({name:'Зеро 0',nums:[0]});if(wheel()===38)a.push({name:'Зеро 00',nums:[37]})}
+ return a;
+}
+function combinations(arr,k,start=0,prefix=[],out=[]){if(prefix.length===k){out.push(prefix);return out}for(let i=start;i<arr.length;i++)combinations(arr,k,i+1,[...prefix,arr[i]],out);return out}
+function drawJoint(){
+ let base=baseJointGroups(),all=[],max=+$('jointMax').value;
+ for(let k=2;k<=max;k++)for(let combo of combinations(base,k)){
+  let inter=combo[0].nums.filter(n=>combo.every(x=>x.nums.includes(n)));
+  if(!inter.length)continue;
+  let r=probRow({name:combo.map(x=>x.name).join(' + '),nums:inter});
+  all.push(r);
+ }
+ all.sort((a,b)=>a.prob-b.prob||b.current-a.current);
+ let t=threshold();$('jointCount').textContent=all.length;$('jointRare').textContent=all.filter(x=>x.current>0&&x.prob<t).length;
+ $('impossibleCount').textContent='—';
+ $('jointResults').innerHTML=all.slice(0,300).map(r=>`<tr class="${r.current>0&&r.prob<t?'rare':''}"><td>${r.name}</td><td>${r.nums.length}</td><td>${r.current}</td><td><span class="pill ${r.current>0&&r.prob<t?'rare':''}">${pct(r.prob)}</span></td><td>${pct(r.p)}</td></tr>`).join('')||'<tr><td colspan="5">Нет комбинаций для выбранных категорий.</td></tr>';
+ if(all.length>300)$('jointResults').insertAdjacentHTML('beforeend',`<tr><td colspan="5" class="muted">Показаны первые 300 из ${all.length} комбинаций с наименьшей вероятностью серии.</td></tr>`);
+}
+function save(){try{localStorage.setItem(KEY,JSON.stringify({history,wheel:wheel(),threshold:$('threshold').value,sort:$('sort').value,jointMax:$('jointMax').value,categories:[...$('categories').querySelectorAll('input')].map(x=>[x.value,x.checked])}))}catch(e){}}
+function restore(){try{let d=JSON.parse(localStorage.getItem(KEY)||'null');if(!d)return;if(d.wheel)$('wheel').value=d.wheel;if(d.threshold)$('threshold').value=d.threshold;if(d.sort)$('sort').value=d.sort;if(d.jointMax)$('jointMax').value=d.jointMax;(d.categories||[]).forEach(([k,v])=>{let el=$('categories').querySelector(`[value="${k}"]`);if(el)el.checked=v});history=Array.isArray(d.history)&&d.history.every(valid)?d.history:[]}catch(e){history=[]}}
+$('loadBtn').onclick=()=>{try{history=parseList($('historyInput').value);$('historyStatus').textContent=`Загружено: ${history.length} спинов. Самый последний — первый в списке.`;render()}catch(e){$('historyStatus').textContent=e.message}};
+$('addBtn').onclick=()=>{let n=parseNum($('newNumber').value);if(n===null||!valid(n)){$('historyStatus').textContent='Номер не подходит для выбранного типа рулетки.';return}history.unshift(n);$('newNumber').value='';$('historyStatus').textContent=`Добавлен номер ${disp(n)}. Выполнен полный перерасчёт.`;render()};
+$('undoBtn').onclick=()=>{if(history.length){let n=history.shift();$('historyStatus').textContent=`Удалён последний спин: ${disp(n)}.`;render()}};
+$('clearBtn').onclick=()=>{if(confirm('Удалить всю историю выпадений?')){history=[];$('historyStatus').textContent='История очищена.';render()}};
+$('wheel').onchange=()=>{if(history.some(n=>!valid(n))){history=[];$('historyStatus').textContent='История очищена: часть номеров не соответствует новому типу рулетки.'}render()};
+['threshold','sort','jointMax'].forEach(id=>$(id).addEventListener('change',render));$('categories').onchange=render;$('chartCategory').onchange=()=>drawChart(+$('chartCategory').value);
+function csvCell(v){return '"'+String(v).replace(/"/g,'""')+'"'}
+$('exportBtn').onclick=()=>{let rows=groupDefs().map(probRow);let lines=[['ОСНОВНЫЕ КАТЕГОРИИ'],['Категория','Текущая серия','Вероятность серии','Шанс за спин','Выпадений','Макс. завершённая серия','Средняя завершённая серия'],...rows.map(r=>[r.name,r.current,r.prob,r.p,r.count,r.max,r.avg]),[],['СОВМЕСТНОЕ ОТСУТСТВИЕ'],['Комбинация','Чисел в пересечении','Текущая серия','Вероятность серии','Шанс за спин']];let base=baseJointGroups();for(let k=2;k<=+$('jointMax').value;k++)for(let combo of combinations(base,k)){let inter=combo[0].nums.filter(n=>combo.every(x=>x.nums.includes(n)));if(!inter.length)continue;let r=probRow({name:combo.map(x=>x.name).join(' + '),nums:inter});lines.push([r.name,r.nums.length,r.current,r.prob,r.p])}let csv='\uFEFF'+lines.map(r=>r.map(csvCell).join(';')).join('\r\n');download(new Blob([csv],{type:'text/csv;charset=utf-8'}),'roulette-analysis.csv')};
+$('backupBtn').onclick=()=>download(new Blob([JSON.stringify({version:2,history,wheel:wheel(),threshold:$('threshold').value,categories:[...$('categories').querySelectorAll('input')].map(x=>[x.value,x.checked])},null,2)],{type:'application/json'}),'roulette-backup.json');
+function download(blob,name){let u=URL.createObjectURL(blob),a=document.createElement('a');a.href=u;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(u),1000)}
+$('restoreFile').onchange=async e=>{try{let d=JSON.parse(await e.target.files[0].text());if(!Array.isArray(d.history)||!d.history.every(n=>Number.isInteger(n)))throw Error('Файл резервной копии некорректен');if(d.wheel)$('wheel').value=d.wheel;history=d.history;if(d.threshold)$('threshold').value=d.threshold;(d.categories||[]).forEach(([k,v])=>{let el=$('categories').querySelector(`[value="${k}"]`);if(el)el.checked=v});if(history.some(n=>!valid(n)))throw Error('В копии есть номера для другого типа рулетки');$('historyStatus').textContent='Резервная копия восстановлена.';render()}catch(err){$('historyStatus').textContent=err.message}};
+restore();$('historyInput').value=history.map(disp).join(', ');render();
+if('serviceWorker'in navigator && location.protocol.startsWith('http'))navigator.serviceWorker.register('./sw.js').catch(()=>{});
+let installPrompt=null;window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();installPrompt=e;$('installBtn').hidden=false});
+$('installBtn').onclick=async()=>{if(installPrompt){installPrompt.prompt();await installPrompt.userChoice;installPrompt=null;$('installBtn').hidden=true}else alert('В браузере выберите меню и команду «Добавить на главный экран».')};
+</script>
+</body></html>
