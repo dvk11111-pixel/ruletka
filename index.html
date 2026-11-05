@@ -39,12 +39,26 @@ tr.rare{background:#fff0d1}td small{display:block;color:#71808b}
 .numgrid{display:grid;grid-template-columns:repeat(6,1fr);gap:5px;margin-top:10px}.ball{border-radius:8px;color:white;text-align:center;padding:7px 2px;font-weight:700;font-size:13px}.ball small{display:block;font-size:10px;font-weight:500}
 .ball.red{background:#c43d48}.ball.black{background:#242a30}.ball.green{background:#18834e}
 .tabs{display:flex;gap:7px;flex-wrap:wrap}.tabs button{width:auto;padding:8px 11px;font-size:12px}.tabs button.active{background:var(--blue)}
-footer{text-align:center;color:#71808b;font-size:11px;padding:12px 20px 28px}
+footer{text-align:center;color:#71808b;font-size:11px;padding:12px 20px 190px}
+.headrow{display:flex;align-items:center;justify-content:space-between;gap:12px;max-width:1080px;margin:auto}
+.update-btn{width:auto;flex:0 0 auto;padding:9px 12px;background:#fff;color:var(--navy);border-color:#fff;font-size:12px}
+.history-balls{display:flex;gap:5px;overflow:auto;padding:8px 0 2px;max-width:100%}
+.history-balls .ball{min-width:34px;flex:0 0 auto}
+.history-balls .ball small{display:none}
+.bottom-dock{position:fixed;z-index:20;left:0;right:0;bottom:0;padding:9px 12px calc(10px + env(safe-area-inset-bottom));background:#fff;border-top:1px solid #cfd8df;box-shadow:0 -5px 20px #102b3f18}
+.dock-inner{max-width:1080px;margin:auto}
+.dock-entry{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px}
+.dock-entry input{min-width:0}
+.dock-entry button{width:auto;padding-left:18px;padding-right:18px}
+.dock-highlights{display:flex;gap:6px;overflow:auto;white-space:nowrap;padding-top:8px}
+.dock-tag{font-size:11px;border-radius:20px;padding:5px 9px;background:#fff0d1;color:#754900;border:1px solid #f0d69f;flex:0 0 auto}
+.dock-tag.bias{background:#e7f2ff;color:#164b78;border-color:#c5dff6}
+@media(max-width:480px){.headrow{align-items:flex-start}.update-btn{font-size:11px;padding:8px}.headrow h1{font-size:22px}.bottom-dock{padding-left:9px;padding-right:9px}}
 @media(min-width:720px){.grid{grid-template-columns:repeat(4,minmax(0,1fr))}.checkgrid{grid-template-columns:repeat(4,minmax(0,1fr))}.numgrid{grid-template-columns:repeat(12,1fr)}}
 </style>
 </head>
 <body>
-<header><h1>Roulette Lab</h1><p>Статистика серий, пропусков и совместного отсутствия</p></header>
+<header><div class="headrow"><div><h1>Roulette Lab 3.0</h1><p>Серии, статистические перекосы и совместное отсутствие</p></div><button id="updateBtn" class="update-btn" type="button">Обновить приложение</button></div></header>
 <main>
 <nav><a href="#setup">Настройки</a><a href="#history">История</a><a href="#analysis">Анализ</a><a href="#joint">Комбинации</a><a href="#data">Данные</a></nav>
 
@@ -74,22 +88,16 @@ footer{text-align:center;color:#71808b;font-size:11px;padding:12px 20px 28px}
 <section class="card" id="history">
 <h2>История выпадений</h2>
 <label for="historyInput">От последнего номера к более ранним</label>
-<textarea id="historyInput" placeholder="Например: 17, 0, 32, 5, 14&#10;Американское двойное зеро вводится как 00"></textarea>
+<div class="history-balls" id="historyBalls" aria-label="Цветная история выпадений"></div><textarea id="historyInput" placeholder="Например: 17, 0, 32, 5, 14&#10;Американское двойное зеро вводится как 00"></textarea>
 <div class="actions"><button id="loadBtn">Загрузить историю</button><button class="alt" id="undoBtn">Отменить последний спин</button><button class="alt" id="clearBtn">Очистить</button></div>
 <div class="hint" id="historyStatus" aria-live="polite"></div>
-<h3>Добавить новое выпадение</h3>
-<div class="grid">
-<div class="field"><label for="newNumber">Номер</label><input id="newNumber" inputmode="numeric" placeholder="Например, 7"></div>
-<div class="field" style="align-self:end"><button id="addBtn">Добавить и пересчитать</button></div>
-</div>
-<p class="hint">Новый результат становится первым в списке истории. Для 00 в американской рулетке введите именно два нуля.</p>
 </section>
 
 <section class="card" id="analysis">
 <h2>Анализ категорий</h2>
 <div class="stats"><div class="stat"><span class="muted">Спинов</span><b id="spinCount">0</b></div><div class="stat"><span class="muted">Строк анализа</span><b id="rowCount">0</b></div><div class="stat"><span class="muted">Ниже порога</span><b id="rareCount">0</b></div></div>
-<div class="notice">Вероятность серии — вероятность того, что категория не встретится на протяжении такого числа независимых спинов: (1 − p)ⁿ. Это оценка редкости уже случившейся серии, а не прогноз следующего результата и не преимущество в игре.</div>
-<div class="scroll"><table><thead><tr><th>Категория</th><th>Сейчас отсутствует</th><th>Вероятность серии</th><th>Шанс за спин</th><th>Выпадений</th><th>Макс. серия</th><th>Средняя серия</th></tr></thead><tbody id="results"><tr><td colspan="7">Загрузите историю.</td></tr></tbody></table></div>
+<div class="notice"><b>Серия</b> — вероятность отсутствия категории в последних n спинах: (1 − p)ⁿ. <b>Перекос</b> — односторонняя биномиальная вероятность получить за всю выборку N такое же или более сильное отклонение числа выпадений от математического ожидания N × p. Например, 1 красное и 30 чёрных за 31 спин будет отмечено как редкое распределение независимо от того, каким был последний спин. Это оценка необычности уже полученных данных, а не прогноз. При проверке многих категорий некоторые редкие значения могут возникать случайно.</div>
+<div class="scroll"><table><thead><tr><th>Категория</th><th>Сейчас отсутствует</th><th>Вероятность серии</th><th>Выпадений за N</th><th>Вероятность перекоса</th><th>Шанс за спин</th><th>Макс. серия</th><th>Средняя серия</th></tr></thead><tbody id="results"><tr><td colspan="8">Загрузите историю.</td></tr></tbody></table></div>
 <h3>История серий выбранной категории</h3>
 <div class="field"><label for="chartCategory">Категория для графика</label><select id="chartCategory"></select></div>
 <div class="chartbox" id="chart"><p class="hint">Загрузите историю, чтобы построить график.</p></div>
@@ -113,10 +121,14 @@ footer{text-align:center;color:#71808b;font-size:11px;padding:12px 20px 28px}
 
 <div class="notice">Статистика рулетки не меняет математическое ожидание ставок. Прошлые результаты не влияют на вероятности будущих спинов.</div>
 </main>
+<div class="bottom-dock"><div class="dock-inner">
+<div class="dock-entry"><input id="newNumber" inputmode="numeric" aria-label="Новый номер" placeholder="Номер (для двойного зеро — 00)"><button id="addBtn">Добавить</button></div>
+<div class="dock-highlights" id="dockHighlights"><span class="hint">Подсветка редких серий и перекосов появится после загрузки истории.</span></div>
+</div></div>
 <footer>Roulette Lab · автономное приложение · данные остаются на вашем устройстве</footer>
 <script>
 const $=id=>document.getElementById(id), reds=new Set([1,3,5,7,9,12,14,16,18,19,21,23,25,27,30,32,34,36]);
-const KEY='rouletteLab.v2';let history=[],chartRows=[];
+const KEY='rouletteLab.v3';let history=[],chartRows=[];
 const wheel=()=>+$('wheel').value,threshold=()=>Math.max(0,+$('threshold').value)/100;
 const disp=n=>n===37?'00':String(n);
 const pct=x=>x===0?'0%':(x*100<.0001? (x*100).toExponential(2)+'%':(x*100).toFixed(x*100<.01?4:2)+'%');
@@ -144,20 +156,43 @@ function statsFor(nums){
  let current=history.findIndex(n=>set.has(n));current=current<0?history.length:current;
  return {current,count,max:completed.length?Math.max(...completed):0,avg:completed.length?completed.reduce((x,y)=>x+y,0)/completed.length:0,series:completed};
 }
+function binomialTail(n,k,p){
+ if(n<=0||p<=0||p>=1)return 1;
+ const mean=n*p, mode=Math.floor((n+1)*p);
+ // Build relative PMFs outward from the mode, then normalize to avoid underflow.
+ const a=new Array(n+1).fill(0);a[mode]=1;
+ for(let i=mode;i<n;i++)a[i+1]=a[i]*((n-i)/(i+1))*(p/(1-p));
+ for(let i=mode;i>0;i--)a[i-1]=a[i]*(i/(n-i+1))*((1-p)/p);
+ const total=a.reduce((x,y)=>x+y,0);
+ if(!Number.isFinite(total)||total===0)return 1;
+ let sum=0;
+ if(k<mean){for(let i=0;i<=k;i++)sum+=a[i]}
+ else{for(let i=k;i<=n;i++)sum+=a[i]}
+ return Math.min(1,sum/total);
+}
 function probRow(g){
- let s=statsFor(g.nums),p=g.nums.length/wheel();
- return {...g,...s,p,prob:Math.pow(1-p,s.current)};
+ let s=statsFor(g.nums),p=g.nums.length/wheel(),observed=history.filter(n=>g.nums.includes(n)).length;
+ return {...g,...s,p,observed,n:history.length,prob:Math.pow(1-p,s.current),biasProb:binomialTail(history.length,observed,p)};
 }
 function render(){
  $('historyInput').value=history.map(disp).join(', ');
  $('spinCount').textContent=history.length;
  let rows=groupDefs().map(probRow),t=threshold(),sort=$('sort')?.value||'gap';
  rows.sort((a,b)=>sort==='prob'?a.prob-b.prob:sort==='name'?a.name.localeCompare(b.name,'ru'):b.current-a.current||a.prob-b.prob);
- $('rowCount').textContent=rows.length;$('rareCount').textContent=rows.filter(x=>x.current>0&&x.prob<t).length;
- $('results').innerHTML=rows.map(r=>`<tr class="${r.current>0&&r.prob<t?'rare':''}"><td><b>${r.name}</b><small>${r.type}</small></td><td>${r.current}</td><td><span class="pill ${r.current>0&&r.prob<t?'rare':''}">${pct(r.prob)}</span></td><td>${pct(r.p)}</td><td>${r.count}</td><td>${r.max}</td><td>${r.avg.toFixed(1)}</td></tr>`).join('')||'<tr><td colspan="7">Выберите категории.</td></tr>';
+ $('rowCount').textContent=rows.length;$('rareCount').textContent=rows.filter(x=>(x.current>0&&x.prob<t)||x.biasProb<t).length;
+ $('results').innerHTML=rows.map(r=>{let sr=r.current>0&&r.prob<t,br=history.length>0&&r.biasProb<t;return `<tr class="${sr||br?'rare':''}"><td><b>${r.name}</b><small>${r.type}</small></td><td>${r.current}</td><td><span class="pill ${sr?'rare':''}">${pct(r.prob)}</span></td><td>${r.observed} / ${r.n}</td><td><span class="pill ${br?'rare':''}">${history.length?pct(r.biasProb):'—'}</span><small>${r.observed<r.n*r.p?'недобор':'перебор'}</small></td><td>${pct(r.p)}</td><td>${r.max}</td><td>${r.avg.toFixed(1)}</td></tr>`}).join('')||'<tr><td colspan="8">Выберите категории.</td></tr>';
  chartRows=rows;let sel=$('chartCategory'),old=sel.value;sel.innerHTML=rows.map((r,i)=>`<option value="${i}">${r.name}</option>`).join('');if(rows.length){sel.value=old&&+old<rows.length?old:'0';drawChart(+sel.value)}else $('chart').innerHTML='';
- drawNumbers();drawJoint();
+ drawNumbers();drawHistoryBalls();drawJoint();drawDock(rows,t);
  save();
+}
+function ballColor(n){return (n===0||n===37)?'green':reds.has(n)?'red':'black'}
+function drawHistoryBalls(){
+ $('historyBalls').innerHTML=history.slice(0,120).map(n=>`<div class="ball ${ballColor(n)}">${disp(n)}</div>`).join('');
+}
+function drawDock(rows,t){
+ const rare=rows.filter(r=>(r.current>0&&r.prob<t)||(history.length>0&&r.biasProb<t))
+ .sort((a,b)=>Math.min(a.current>0?a.prob:1,a.biasProb)-Math.min(b.current>0?b.prob:1,b.biasProb)).slice(0,18);
+ $('dockHighlights').innerHTML=rare.length?rare.map(r=>`<span class="dock-tag ${r.biasProb<t?'bias':''}">${r.name}: ${r.current>0&&r.prob<t?'серия '+pct(r.prob):''}${r.current>0&&r.prob<t&&r.biasProb<t?' · ':''}${r.biasProb<t?'перекос '+pct(r.biasProb):''}</span>`).join(''):'<span class="hint">Нет категорий ниже заданного порога.</span>';
 }
 function drawNumbers(){
  let ns=Array.from({length:36},(_,i)=>i+1);if(wheel()!==36)ns.unshift(0);if(wheel()===38)ns.push(37);
@@ -198,20 +233,35 @@ function drawJoint(){
  if(all.length>300)$('jointResults').insertAdjacentHTML('beforeend',`<tr><td colspan="5" class="muted">Показаны первые 300 из ${all.length} комбинаций с наименьшей вероятностью серии.</td></tr>`);
 }
 function save(){try{localStorage.setItem(KEY,JSON.stringify({history,wheel:wheel(),threshold:$('threshold').value,sort:$('sort').value,jointMax:$('jointMax').value,categories:[...$('categories').querySelectorAll('input')].map(x=>[x.value,x.checked])}))}catch(e){}}
-function restore(){try{let d=JSON.parse(localStorage.getItem(KEY)||'null');if(!d)return;if(d.wheel)$('wheel').value=d.wheel;if(d.threshold)$('threshold').value=d.threshold;if(d.sort)$('sort').value=d.sort;if(d.jointMax)$('jointMax').value=d.jointMax;(d.categories||[]).forEach(([k,v])=>{let el=$('categories').querySelector(`[value="${k}"]`);if(el)el.checked=v});history=Array.isArray(d.history)&&d.history.every(valid)?d.history:[]}catch(e){history=[]}}
+function restore(){try{let d=JSON.parse(localStorage.getItem(KEY)||localStorage.getItem('rouletteLab.v2')||'null');if(!d)return;if(d.wheel)$('wheel').value=d.wheel;if(d.threshold)$('threshold').value=d.threshold;if(d.sort)$('sort').value=d.sort;if(d.jointMax)$('jointMax').value=d.jointMax;(d.categories||[]).forEach(([k,v])=>{let el=$('categories').querySelector(`[value="${k}"]`);if(el)el.checked=v});history=Array.isArray(d.history)&&d.history.every(valid)?d.history:[]}catch(e){history=[]}}
 $('loadBtn').onclick=()=>{try{history=parseList($('historyInput').value);$('historyStatus').textContent=`Загружено: ${history.length} спинов. Самый последний — первый в списке.`;render()}catch(e){$('historyStatus').textContent=e.message}};
-$('addBtn').onclick=()=>{let n=parseNum($('newNumber').value);if(n===null||!valid(n)){$('historyStatus').textContent='Номер не подходит для выбранного типа рулетки.';return}history.unshift(n);$('newNumber').value='';$('historyStatus').textContent=`Добавлен номер ${disp(n)}. Выполнен полный перерасчёт.`;render()};
+function addSpin(){let n=parseNum($('newNumber').value);if(n===null||!valid(n)){$('historyStatus').textContent='Номер не подходит для выбранного типа рулетки.';return}history.unshift(n);$('newNumber').value='';$('historyStatus').textContent=`Добавлен номер ${disp(n)}. Выполнен полный перерасчёт.`;render()} $('addBtn').onclick=addSpin; $('newNumber').addEventListener('keydown',e=>{if(e.key==='Enter')addSpin()});
 $('undoBtn').onclick=()=>{if(history.length){let n=history.shift();$('historyStatus').textContent=`Удалён последний спин: ${disp(n)}.`;render()}};
 $('clearBtn').onclick=()=>{if(confirm('Удалить всю историю выпадений?')){history=[];$('historyStatus').textContent='История очищена.';render()}};
 $('wheel').onchange=()=>{if(history.some(n=>!valid(n))){history=[];$('historyStatus').textContent='История очищена: часть номеров не соответствует новому типу рулетки.'}render()};
 ['threshold','sort','jointMax'].forEach(id=>$(id).addEventListener('change',render));$('categories').onchange=render;$('chartCategory').onchange=()=>drawChart(+$('chartCategory').value);
 function csvCell(v){return '"'+String(v).replace(/"/g,'""')+'"'}
-$('exportBtn').onclick=()=>{let rows=groupDefs().map(probRow);let lines=[['ОСНОВНЫЕ КАТЕГОРИИ'],['Категория','Текущая серия','Вероятность серии','Шанс за спин','Выпадений','Макс. завершённая серия','Средняя завершённая серия'],...rows.map(r=>[r.name,r.current,r.prob,r.p,r.count,r.max,r.avg]),[],['СОВМЕСТНОЕ ОТСУТСТВИЕ'],['Комбинация','Чисел в пересечении','Текущая серия','Вероятность серии','Шанс за спин']];let base=baseJointGroups();for(let k=2;k<=+$('jointMax').value;k++)for(let combo of combinations(base,k)){let inter=combo[0].nums.filter(n=>combo.every(x=>x.nums.includes(n)));if(!inter.length)continue;let r=probRow({name:combo.map(x=>x.name).join(' + '),nums:inter});lines.push([r.name,r.nums.length,r.current,r.prob,r.p])}let csv='\uFEFF'+lines.map(r=>r.map(csvCell).join(';')).join('\r\n');download(new Blob([csv],{type:'text/csv;charset=utf-8'}),'roulette-analysis.csv')};
-$('backupBtn').onclick=()=>download(new Blob([JSON.stringify({version:2,history,wheel:wheel(),threshold:$('threshold').value,categories:[...$('categories').querySelectorAll('input')].map(x=>[x.value,x.checked])},null,2)],{type:'application/json'}),'roulette-backup.json');
+$('exportBtn').onclick=()=>{let rows=groupDefs().map(probRow);let lines=[['ОСНОВНЫЕ КАТЕГОРИИ'],['Категория','Текущая серия','Вероятность серии','Выпадений за N','Вероятность перекоса','Шанс за спин','Макс. завершённая серия','Средняя завершённая серия'],...rows.map(r=>[r.name,r.current,r.prob,r.observed+'/'+r.n,r.biasProb,r.p,r.count,r.max,r.avg]),[],['СОВМЕСТНОЕ ОТСУТСТВИЕ'],['Комбинация','Чисел в пересечении','Текущая серия','Вероятность серии','Шанс за спин']];let base=baseJointGroups();for(let k=2;k<=+$('jointMax').value;k++)for(let combo of combinations(base,k)){let inter=combo[0].nums.filter(n=>combo.every(x=>x.nums.includes(n)));if(!inter.length)continue;let r=probRow({name:combo.map(x=>x.name).join(' + '),nums:inter});lines.push([r.name,r.nums.length,r.current,r.prob,r.p])}let csv='\uFEFF'+lines.map(r=>r.map(csvCell).join(';')).join('\r\n');download(new Blob([csv],{type:'text/csv;charset=utf-8'}),'roulette-analysis.csv')};
+$('backupBtn').onclick=()=>download(new Blob([JSON.stringify({version:3,history,wheel:wheel(),threshold:$('threshold').value,categories:[...$('categories').querySelectorAll('input')].map(x=>[x.value,x.checked])},null,2)],{type:'application/json'}),'roulette-backup.json');
 function download(blob,name){let u=URL.createObjectURL(blob),a=document.createElement('a');a.href=u;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(u),1000)}
 $('restoreFile').onchange=async e=>{try{let d=JSON.parse(await e.target.files[0].text());if(!Array.isArray(d.history)||!d.history.every(n=>Number.isInteger(n)))throw Error('Файл резервной копии некорректен');if(d.wheel)$('wheel').value=d.wheel;history=d.history;if(d.threshold)$('threshold').value=d.threshold;(d.categories||[]).forEach(([k,v])=>{let el=$('categories').querySelector(`[value="${k}"]`);if(el)el.checked=v});if(history.some(n=>!valid(n)))throw Error('В копии есть номера для другого типа рулетки');$('historyStatus').textContent='Резервная копия восстановлена.';render()}catch(err){$('historyStatus').textContent=err.message}};
 restore();$('historyInput').value=history.map(disp).join(', ');render();
-if('serviceWorker'in navigator && location.protocol.startsWith('http'))navigator.serviceWorker.register('./sw.js').catch(()=>{});
+let swReg=null;
+if('serviceWorker'in navigator && location.protocol.startsWith('http')){
+ navigator.serviceWorker.register('./sw.js').then(reg=>{swReg=reg;reg.update().catch(()=>{});}).catch(()=>{});
+ navigator.serviceWorker.addEventListener('controllerchange',()=>{if(window.__reloadingForUpdate)return;window.__reloadingForUpdate=true;location.reload()});
+}
+$('updateBtn').onclick=async()=>{
+ const b=$('updateBtn');b.disabled=true;b.textContent='Проверяем…';
+ try{
+  if(!('serviceWorker'in navigator)){alert('Обновление доступно после публикации приложения по HTTPS.');return}
+  swReg=swReg||await navigator.serviceWorker.getRegistration();
+  if(!swReg)swReg=await navigator.serviceWorker.register('./sw.js');
+  await swReg.update();
+  if(swReg.waiting){swReg.waiting.postMessage({type:'SKIP_WAITING'});b.textContent='Устанавливаем…'}
+  else{b.textContent='Уже актуально';setTimeout(()=>{b.textContent='Обновить приложение';b.disabled=false},1800)}
+ }catch(e){b.textContent='Ошибка обновления';setTimeout(()=>{b.textContent='Обновить приложение';b.disabled=false},2200)}
+};
 let installPrompt=null;window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();installPrompt=e;$('installBtn').hidden=false});
 $('installBtn').onclick=async()=>{if(installPrompt){installPrompt.prompt();await installPrompt.userChoice;installPrompt=null;$('installBtn').hidden=true}else alert('В браузере выберите меню и команду «Добавить на главный экран».')};
 </script>
